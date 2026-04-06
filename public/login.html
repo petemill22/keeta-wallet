@@ -216,7 +216,8 @@ async function doLogin() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    window.location.href = '/';
+    const ret = new URLSearchParams(window.location.search).get('return');
+    window.location.href = ret ? '/' + ret : '/';
   } catch (err) {
     errEl.textContent = err.message;
     errEl.classList.add('show');

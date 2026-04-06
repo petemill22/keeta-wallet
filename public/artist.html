@@ -404,7 +404,7 @@ input[type=range] { flex: 1; accent-color: #eee; }
 // ── Auth check ────────────────────────────────────────────────────────────────
 async function boot() {
   const cfg = await fetch('/api/config').then(r => r.json());
-  if (!cfg.user) { window.location.href = '/login.html'; return; }
+  if (!cfg.user) { window.location.href = '/login.html?return=artist.html'; return; }
   document.getElementById('p-name').textContent = cfg.user.name;
   loadStats();
   updatePreview();
