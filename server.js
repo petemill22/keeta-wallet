@@ -15,9 +15,11 @@ app.use(session({
   secret:            process.env.SESSION_SECRET || 'keeta-dev-secret',
   resave:            false,
   saveUninitialized: false,
+  proxy:             true,
   cookie: {
     secure:   process.env.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: 'lax',
     maxAge:   7 * 24 * 60 * 60 * 1000,
   },
 }));
