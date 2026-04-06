@@ -7,6 +7,7 @@ const db      = require('./db');
 const keeta   = require('./keeta');
 
 const app = express();
+app.set('trust proxy', 1); // Render / Cloudflare sit in front
 app.use(express.json());
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
