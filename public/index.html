@@ -888,9 +888,21 @@ html, body {
     <!-- ════════════════════════════════════════════ -->
     <div class="page" id="page-themes">
 
-      <div style="padding: 8px 20px 20px">
+      <div style="padding: 8px 20px 16px">
         <div style="font-size:26px;font-weight:800;color:var(--text);margin-bottom:2px">Themes</div>
-        <div style="font-size:13px;color:var(--text2)">Personalise your wallet. Buy once, keep forever.</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Personalise your wallet. Buy once, keep forever.</div>
+        <div style="position:relative">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--text2);pointer-events:none">🔍</span>
+          <input
+            id="theme-search"
+            type="text"
+            placeholder="Search themes…"
+            oninput="renderThemes()"
+            style="width:100%;background:var(--s1);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px 11px 40px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color 0.2s"
+            onfocus="this.style.borderColor='var(--border2)'"
+            onblur="this.style.borderColor='var(--border)'"
+          >
+        </div>
       </div>
 
       <div class="theme-grid" id="theme-grid">
@@ -1256,9 +1268,20 @@ async function loadThemes() {
 }
 
 function renderThemes() {
-  const grid = document.getElementById('theme-grid');
+  const grid  = document.getElementById('theme-grid');
+  const query = (document.getElementById('theme-search')?.value || '').toLowerCase().trim();
+  const list  = Object.values(THEMES).filter(t =>
+    !query ||
+    t.name.toLowerCase().includes(query) ||
+    (t.description || '').toLowerCase().includes(query) ||
+    (t.artist || '').toLowerCase().includes(query)
+  );
   grid.innerHTML = '';
-  Object.values(THEMES).forEach(t => {
+  if (list.length === 0) {
+    grid.innerHTML = `<div class="empty" style="grid-column:span 2;padding:40px 0">No themes match "${query}"</div>`;
+    return;
+  }
+  list.forEach(t => {
     const p    = THEME_PREVIEW[t.key] || THEME_PREVIEW.genesis;
     const card = document.createElement('div');
     card.className = 'theme-card' + (t.key === currentTheme ? ' active' : '');
