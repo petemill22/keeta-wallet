@@ -1290,15 +1290,45 @@ function renderThemes() {
 
 function applyTheme(key) {
   currentTheme = key;
-  applyThemeCss(key);
   renderThemes();
   showToast(THEMES[key]?.name + ' applied ✓');
+  if (THEME_CSS_VARS[key]) {
+    applyThemeCss(key, THEME_CSS_VARS[key]);
+  } else {
+    // Custom theme — fetch vars from server
+    fetch(`/api/themes/${key}/vars`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        if (d.theme_vars) {
+          const vars = d.theme_vars;
+          const cssVars = {
+            '--acc':       vars.acc  || '#7b61ff',
+            '--acc2':      vars.acc2 || '#00c2ff',
+            '--bg':        vars.bg   || '#0a0a0f',
+            '--card-grad': `linear-gradient(135deg,${vars.acc||'#7b61ff'},${vars.acc2||'#00c2ff'})`,
+          };
+          THEME_CSS_VARS[key] = cssVars;
+          applyThemeCss(key, cssVars);
+          // Apply artwork to balance card if present
+          if (d.artwork_data) {
+            const card = document.querySelector('.balance-card');
+            if (card) {
+              card.style.background = `linear-gradient(135deg,${vars.acc||'#7b61ff'}cc,${vars.acc2||'#00c2ff'}99), url('${d.artwork_data}') center/cover`;
+            }
+          }
+        }
+      })
+      .catch(() => applyThemeCss(key, THEME_CSS_VARS.genesis));
+  }
 }
 
-function applyThemeCss(key) {
-  const vars = THEME_CSS_VARS[key] || THEME_CSS_VARS.genesis;
+function applyThemeCss(key, vars) {
+  if (!vars) vars = THEME_CSS_VARS[key] || THEME_CSS_VARS.genesis;
   const root = document.documentElement;
   Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
+  // Reset balance card to CSS var (may be overridden for artwork themes)
+  const card = document.querySelector('.balance-card');
+  if (card && !card.style.background.includes('url(')) card.style.background = '';
 }
 
 // ── Purchase modal ────────────────────────────────────────────────────────────

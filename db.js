@@ -52,6 +52,8 @@ for (const sql of [
   `ALTER TABLE users ADD COLUMN is_artist INTEGER DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN keeta_seed TEXT`,
   `ALTER TABLE users ADD COLUMN keeta_address TEXT`,
+  `ALTER TABLE themes ADD COLUMN theme_vars TEXT`,
+  `ALTER TABLE themes ADD COLUMN artwork_data TEXT`,
 ]) {
   try { db.exec(sql); } catch (_) { /* column already exists */ }
 }

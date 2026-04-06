@@ -8,7 +8,7 @@ const keeta   = require('./keeta');
 
 const app = express();
 app.set('trust proxy', 1); // Render / Cloudflare sit in front
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // artwork data URLs can be large
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
 app.use(session({
@@ -313,23 +313,33 @@ app.get('/api/artist/stats', requireAuth, (req, res) => {
     GROUP BY t.key
   `).all(user.wallet_address);
   const gross       = themes.reduce((s, t) => s + t.gross_pence, 0);
-  res.json({ themes, gross_pence: gross, artist_share_pence: Math.round(gross * 0.9) });
+  res.json({ themes, gross_pence: gross, artist_share_pence: Math.round(gross * 0.8) });
 });
 
 app.post('/api/artist/publish', requireAuth, (req, res) => {
-  const { key, name, description, price_pence, css_class } = req.body;
+  const { key, name, description, price_pence, css_class, theme_vars, artwork_data } = req.body;
   if (!key || !name || !css_class) return res.status(400).json({ error: 'key, name, and css_class are required' });
   const user = db.prepare('SELECT wallet_address FROM users WHERE id = ?').get(req.session.userId);
+  const themeVarsStr  = theme_vars  ? JSON.stringify(theme_vars)  : null;
+  const artworkStr    = artwork_data || null;
   try {
     db.prepare(`
-      INSERT INTO themes (key, name, css_class, description, price_pence, artist, active)
-      VALUES (?, ?, ?, ?, ?, ?, 1)
-    `).run(key, name, css_class, description || '', price_pence || null, user.wallet_address);
+      INSERT INTO themes (key, name, css_class, description, price_pence, artist, active, theme_vars, artwork_data)
+      VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+    `).run(key, name, css_class, description || '', price_pence || null, user.wallet_address, themeVarsStr, artworkStr);
     res.json({ success: true, key });
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Theme key already exists' });
     throw err;
   }
+});
+
+// ── Theme vars + artwork (for applying custom themes) ─────────────────────────
+app.get('/api/themes/:key/vars', (req, res) => {
+  const theme = db.prepare('SELECT theme_vars, artwork_data FROM themes WHERE key = ?').get(req.params.key);
+  if (!theme) return res.status(404).json({ error: 'Not found' });
+  const vars = theme.theme_vars ? JSON.parse(theme.theme_vars) : null;
+  res.json({ theme_vars: vars, artwork_data: theme.artwork_data || null });
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
