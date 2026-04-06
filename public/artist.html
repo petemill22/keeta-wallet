@@ -922,6 +922,9 @@
     <!-- PUBLISH -->
     <div class="right-section">
       <button class="btn-publish" id="btn-publish" onclick="publishTheme()">Publish to marketplace</button>
+      <div style="font-size:11px;color:#555;text-align:center;margin-top:8px;font-family:'Space Mono',monospace">
+        Listing fee: <span id="publish-fee-display">~$3 in KTA</span> · You keep 80% of sales
+      </div>
       <div class="publish-msg" id="publish-msg"></div>
     </div>
 
@@ -992,6 +995,15 @@ async function boot() {
   updatePreview();
   updateEarnings();
   loadStats();
+
+  // Show live publish fee
+  fetch('/api/publish/fee', { credentials: 'include' })
+    .then(r => r.json())
+    .then(d => {
+      const el = document.getElementById('publish-fee-display');
+      if (el && d.feeKta) el.textContent = `${d.feeKta.toFixed(1)} KTA (~$${d.feeUsd.toFixed(0)})`;
+    })
+    .catch(() => {});
 }
 
 /* =========================================================
@@ -1445,62 +1457,63 @@ function updateEarnings() {
    PUBLISH
    ========================================================= */
 async function publishTheme() {
-  const key = document.getElementById('t-key').value.trim();
-  const name = document.getElementById('t-name').value.trim();
+  const key         = document.getElementById('t-key').value.trim();
+  const name        = document.getElementById('t-name').value.trim();
   const description = document.getElementById('t-desc').value.trim();
-  const priceVal = parseFloat(document.getElementById('t-price').value);
+  const priceVal    = parseFloat(document.getElementById('t-price').value);
 
-  if (!key) { showPublishMsg('Theme key is required.', 'error'); return; }
+  if (!key)  { showPublishMsg('Theme key is required.', 'error'); return; }
   if (!name) { showPublishMsg('Theme name is required.', 'error'); return; }
   if (!priceVal || priceVal < 0.50) { showPublishMsg('Price must be at least \u00a30.50.', 'error'); return; }
 
-  const pricePence = Math.round(priceVal * 100);
+  // Fetch publish fee and confirm with user
+  showPublishMsg('Checking fee\u2026', '');
+  let feeKta, feeUsd;
+  try {
+    const feeData = await fetch('/api/publish/fee', { credentials: 'include' }).then(r => r.json());
+    feeKta = feeData.feeKta;
+    feeUsd = feeData.feeUsd;
+  } catch (e) {
+    showPublishMsg('Could not fetch publish fee. Try again.', 'error');
+    return;
+  }
 
+  const confirmed = window.confirm(
+    `Publishing "${name}" costs ${feeKta.toFixed(2)} KTA ($${feeUsd.toFixed(2)}).\n\nThis will be charged to your Keeta wallet and routed to the platform.\n\nProceed?`
+  );
+  if (!confirmed) { showPublishMsg('', ''); return; }
+
+  const pricePence = Math.round(priceVal * 100);
   const payload = {
-    key: key,
-    name: name,
-    description: description,
+    key, name, description,
     price_pence: pricePence,
     css_class: 'theme-custom-' + key,
     theme_vars: {
-      acc: state.acc,
-      acc2: state.acc2,
-      bg: state.bg,
-      text: state.text,
-      card: state.card,
-      font: state.font,
-      glow: state.glow,
-      overlayOpacity: state.overlay,
-      bgMode: state.bgMode,
-      hasArtwork: !!state.artworkDataUrl
+      acc: state.acc, acc2: state.acc2, bg: state.bg,
+      text: state.text, card: state.card, font: state.font,
+      glow: state.glow, overlayOpacity: state.overlay,
+      bgMode: state.bgMode, hasArtwork: !!state.artworkDataUrl
     }
   };
-  if (state.artworkDataUrl) {
-    payload.artwork_data = state.artworkDataUrl;
-  }
+  if (state.artworkDataUrl) payload.artwork_data = state.artworkDataUrl;
 
   const btn = document.getElementById('btn-publish');
   btn.disabled = true;
-  btn.textContent = 'Publishing\u2026';
+  btn.textContent = `Paying ${feeKta.toFixed(2)} KTA\u2026`;
   showPublishMsg('', '');
 
   try {
-    const res = await fetch('/api/artist/publish', {
-      method: 'POST',
-      credentials: 'include',
+    const res  = await fetch('/api/artist/publish', {
+      method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+    const data = await res.json();
     if (res.ok) {
-      showPublishMsg('Theme published successfully!', 'success');
+      showPublishMsg(`"${name}" is live! Fee paid: ${data.feeKta ? data.feeKta.toFixed(2) + ' KTA' : ''}`, 'success');
       loadStats();
     } else {
-      let errMsg = 'Error ' + res.status;
-      try {
-        const errData = await res.json();
-        if (errData && errData.message) errMsg = errData.message;
-      } catch (_) {}
-      showPublishMsg(errMsg, 'error');
+      showPublishMsg(data.error || 'Publish failed', 'error');
     }
   } catch (e) {
     showPublishMsg('Network error. Please try again.', 'error');

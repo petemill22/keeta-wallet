@@ -130,6 +130,18 @@ app.get('/api/my-themes', requireAuth, (req, res) => {
   res.json(owned);
 });
 
+// ── Publish fee info ──────────────────────────────────────────────────────────
+app.get('/api/publish/fee', async (req, res) => {
+  try {
+    const rate       = await keeta.getKtaUsdRate();
+    const feeUsd     = parseFloat(process.env.PUBLISH_FEE_USD || '3');
+    const feeKta     = feeUsd / rate;
+    res.json({ feeUsd, feeKta, usdPerKta: rate });
+  } catch (err) {
+    res.status(502).json({ error: 'Could not fetch rate' });
+  }
+});
+
 // ── KTA rate ──────────────────────────────────────────────────────────────────
 app.get('/api/kta/rate', async (req, res) => {
   try {
@@ -316,18 +328,38 @@ app.get('/api/artist/stats', requireAuth, (req, res) => {
   res.json({ themes, gross_pence: gross, artist_share_pence: Math.round(gross * 0.8) });
 });
 
-app.post('/api/artist/publish', requireAuth, (req, res) => {
+app.post('/api/artist/publish', requireAuth, async (req, res) => {
   const { key, name, description, price_pence, css_class, theme_vars, artwork_data } = req.body;
   if (!key || !name || !css_class) return res.status(400).json({ error: 'key, name, and css_class are required' });
-  const user = db.prepare('SELECT wallet_address FROM users WHERE id = ?').get(req.session.userId);
-  const themeVarsStr  = theme_vars  ? JSON.stringify(theme_vars)  : null;
-  const artworkStr    = artwork_data || null;
+
+  // Check key not already taken
+  if (db.prepare('SELECT key FROM themes WHERE key = ?').get(key))
+    return res.status(409).json({ error: 'Theme key already exists' });
+
+  // Charge $3 publish fee in KTA
+  const feeUsd  = parseFloat(process.env.PUBLISH_FEE_USD || '3');
+  const ktaRate = await keeta.getKtaUsdRate();
+  const feeKta  = feeUsd / ktaRate;
+
+  const user = db.prepare('SELECT wallet_address, keeta_seed FROM users WHERE id = ?').get(req.session.userId);
+
+  let txResult;
+  try {
+    txResult = await keeta.payForThemeKta(user.keeta_seed, feeKta);
+  } catch (err) {
+    return res.status(402).json({ error: 'Publish fee payment failed: ' + err.message });
+  }
+
+  const themeVarsStr = theme_vars   ? JSON.stringify(theme_vars) : null;
+  const artworkStr   = artwork_data || null;
+
   try {
     db.prepare(`
       INSERT INTO themes (key, name, css_class, description, price_pence, artist, active, theme_vars, artwork_data)
       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
     `).run(key, name, css_class, description || '', price_pence || null, user.wallet_address, themeVarsStr, artworkStr);
-    res.json({ success: true, key });
+    console.log(`Theme published: key=${key} fee=${feeKta.toFixed(4)} KTA tx=${txResult.txId}`);
+    res.json({ success: true, key, feeKta, txId: txResult.txId });
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Theme key already exists' });
     throw err;
