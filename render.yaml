@@ -11,3 +11,5 @@ services:
         generateValue: true
       - key: PORT
         value: 3000
+      - key: DB_PATH
+        value: /tmp/keeta.db
