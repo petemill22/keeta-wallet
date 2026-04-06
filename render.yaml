@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: keeta-wallet
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: PORT
+        value: 3000
