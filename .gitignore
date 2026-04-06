@@ -1,0 +1,6 @@
+node_modules/
+.env
+keeta.db
+*.db
+npm-debug.log*
+.DS_Store

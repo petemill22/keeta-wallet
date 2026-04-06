@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keeta — Sign in</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0c0c0e;
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: #111;
+  border: 1px solid #1e1e22;
+  border-radius: 20px;
+  padding: 36px 32px;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 800;
+  color: #eee;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.logo-sub {
+  font-size: 12px;
+  color: #444;
+  font-family: 'Space Mono', monospace;
+  margin-bottom: 32px;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  background: #0c0c0e;
+  border: 1px solid #1e1e22;
+  border-radius: 10px;
+  padding: 3px;
+  margin-bottom: 24px;
+}
+
+.tab {
+  flex: 1;
+  padding: 7px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #555;
+  border: none;
+  background: transparent;
+  transition: all 0.15s;
+  font-family: 'Syne', sans-serif;
+  text-align: center;
+}
+
+.tab.active { background: #1e1e24; color: #eee; }
+
+.field { margin-bottom: 14px; }
+
+label {
+  display: block;
+  font-size: 11px;
+  color: #555;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+input {
+  width: 100%;
+  background: #0c0c0e;
+  border: 1px solid #1e1e22;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #eee;
+  font-family: 'Syne', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus { border-color: #444; }
+input::placeholder { color: #333; }
+
+.btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background: #eee;
+  color: #111;
+  font-weight: 700;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+
+.btn:hover    { opacity: 0.88; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.error {
+  font-size: 12px;
+  color: #e05050;
+  margin-top: 12px;
+  text-align: center;
+  display: none;
+}
+
+.error.show { display: block; }
+
+.demo-hint {
+  margin-top: 20px;
+  padding: 12px 14px;
+  background: #0c0c0e;
+  border: 1px solid #1e1e22;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #444;
+  font-family: 'Space Mono', monospace;
+  line-height: 1.7;
+}
+
+.demo-hint strong { color: #666; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">Keeta</div>
+  <div class="logo-sub">Wallet themes marketplace</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('login', this)">Sign in</button>
+    <button class="tab" onclick="showTab('register', this)">Create account</button>
+  </div>
+
+  <!-- Login form -->
+  <div id="form-login">
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn" id="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="error" id="login-error"></div>
+  </div>
+
+  <!-- Register form -->
+  <div id="form-register" style="display:none">
+    <div class="field">
+      <label>Your name</label>
+      <input type="text" id="reg-name" placeholder="Jordan" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="reg-password" placeholder="At least 6 characters" autocomplete="new-password">
+    </div>
+    <button class="btn" id="reg-btn" onclick="doRegister()">Create account</button>
+    <div class="error" id="reg-error"></div>
+  </div>
+
+  <div class="demo-hint">
+    <strong>Demo account</strong><br>
+    Email: jordan@keeta.app<br>
+    Password: demo123
+  </div>
+</div>
+
+<script>
+function showTab(tab, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('form-login').style.display    = tab === 'login'    ? '' : 'none';
+  document.getElementById('form-register').style.display = tab === 'register' ? '' : 'none';
+}
+
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn      = document.getElementById('login-btn');
+  const errEl    = document.getElementById('login-error');
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  errEl.classList.remove('show');
+
+  try {
+    const res  = await fetch('/api/auth/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    window.location.href = '/';
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Sign in';
+  }
+}
+
+async function doRegister() {
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const btn      = document.getElementById('reg-btn');
+  const errEl    = document.getElementById('reg-error');
+
+  btn.disabled = true;
+  btn.textContent = 'Creating account…';
+  errEl.classList.remove('show');
+
+  try {
+    const res  = await fetch('/api/auth/register', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    window.location.href = '/';
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Create account';
+  }
+}
+
+// Allow Enter key to submit
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const loginVisible = document.getElementById('form-login').style.display !== 'none';
+  if (loginVisible) doLogin(); else doRegister();
+});
+</script>
+</body>
+</html>

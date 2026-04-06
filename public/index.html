@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Keeta</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+:root {
+  --bg:       #0a0a0f;
+  --s1:       #13131a;
+  --s2:       #1c1c26;
+  --s3:       #252530;
+  --acc:      #7b61ff;
+  --acc2:     #00c2ff;
+  --text:     #ffffff;
+  --text2:    #8b8b9a;
+  --text3:    #3a3a48;
+  --border:   rgba(255,255,255,0.06);
+  --border2:  rgba(255,255,255,0.10);
+  --pos:      #00c38e;
+  --neg:      #ff4d6a;
+  --card-grad: linear-gradient(135deg,#7b61ff 0%,#00c2ff 100%);
+  --radius:   16px;
+  --radius-sm:10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── APP SHELL ────────────────────────────────────────────────── */
+.app {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--bg);
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 80px;
+}
+
+.scroll-area::-webkit-scrollbar { display: none; }
+
+/* ── HEADER ───────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+}
+
+.header-logo {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: var(--card-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--card-grad);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff;
+  cursor: pointer;
+  position: relative;
+}
+
+.notif-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text2);
+}
+
+/* ── BALANCE CARD ─────────────────────────────────────────────── */
+.balance-section { padding: 8px 20px 24px; }
+
+.balance-card {
+  background: var(--card-grad);
+  border-radius: 24px;
+  padding: 28px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.balance-card::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 200px; height: 200px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.balance-card::after {
+  content: '';
+  position: absolute;
+  bottom: -80px; left: -40px;
+  width: 220px; height: 220px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.balance-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  position: relative; z-index: 1;
+}
+
+.balance-amount {
+  font-size: 40px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  margin-bottom: 6px;
+  position: relative; z-index: 1;
+}
+
+.balance-change {
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  font-weight: 500;
+  position: relative; z-index: 1;
+}
+
+.balance-change.pos { color: rgba(255,255,255,0.9); }
+.balance-change.neg { color: rgba(255,120,120,0.9); }
+
+/* ── QUICK ACTIONS ────────────────────────────────────────────── */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 0 20px 28px;
+}
+
+.qa-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text);
+}
+
+.qa-icon {
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  transition: all 0.2s;
+}
+
+.qa-btn:hover .qa-icon {
+  background: var(--s2);
+  border-color: var(--border2);
+  transform: translateY(-2px);
+}
+
+.qa-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+}
+
+/* ── SECTION HEADER ───────────────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 12px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.section-action {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--acc);
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+/* ── ASSET ROWS ───────────────────────────────────────────────── */
+.asset-list { padding: 0 12px; margin-bottom: 28px; }
+
+.asset-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 10px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.asset-row:hover { background: var(--s1); }
+
+.asset-icon {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  font-family: 'Space Mono', monospace;
+}
+
+.asset-body { flex: 1; min-width: 0; }
+.asset-name   { font-size: 14px; font-weight: 600; color: var(--text); }
+.asset-meta   { font-size: 12px; color: var(--text2); margin-top: 1px; }
+
+.asset-right { text-align: right; }
+.asset-value    { font-size: 14px; font-weight: 600; color: var(--text); }
+.asset-balance  { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.asset-change   { font-size: 11px; font-weight: 600; margin-top: 2px; }
+.asset-change.pos { color: var(--pos); }
+.asset-change.neg { color: var(--neg); }
+
+/* ── TRANSACTIONS ─────────────────────────────────────────────── */
+.tx-list { padding: 0 12px; margin-bottom: 24px; }
+
+.tx-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 10px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  cursor: pointer;
+}
+
+.tx-row:hover { background: var(--s1); }
+
+.tx-icon {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  background: var(--s2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.tx-body { flex: 1; }
+.tx-name   { font-size: 14px; font-weight: 500; color: var(--text); }
+.tx-date   { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.tx-amount { font-size: 14px; font-weight: 600; text-align: right; }
+.tx-amount.pos { color: var(--pos); }
+.tx-amount.neg { color: var(--text2); }
+
+/* ── BOTTOM NAV ───────────────────────────────────────────────── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  background: rgba(10,10,15,0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0 10px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text3);
+  transition: color 0.15s;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+}
+
+.nav-btn.active { color: var(--acc); }
+.nav-btn .nav-icon { font-size: 20px; line-height: 1; }
+
+/* ── TABS (pages) ─────────────────────────────────────────────── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── CARDS (generic surface) ──────────────────────────────────── */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 0 20px 16px;
+}
+
+.card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.card-sub   { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.5; }
+
+/* ── THEME GRID ───────────────────────────────────────────────── */
+.theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0 20px;
+  margin-bottom: 20px;
+}
+
+.theme-card {
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  background: var(--s1);
+  transition: all 0.2s;
+}
+
+.theme-card:hover { transform: translateY(-2px); }
+.theme-card.active { border-color: var(--text); }
+
+.theme-preview {
+  height: 80px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 10px 12px;
+}
+
+.theme-preview-bar { width: 32px; height: 3px; border-radius: 2px; margin-bottom: 6px; }
+.theme-preview-amt { font-size: 14px; font-weight: 800; line-height: 1; }
+
+.theme-foot {
+  padding: 10px 12px;
+  background: var(--s2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.theme-foot-name  { font-size: 12px; font-weight: 700; color: var(--text); }
+.theme-foot-owned { font-size: 10px; color: var(--pos); font-weight: 600; }
+
+.buy-pill {
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--s3);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+}
+
+.buy-pill:hover { border-color: var(--text3); color: var(--text); }
+
+/* ── PURCHASE MODAL ───────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal {
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-radius: 24px 24px 0 0;
+  padding: 8px 24px 40px;
+  width: 100%;
+  max-width: 430px;
+  transform: translateY(40px);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+.modal-overlay.open .modal { transform: translateY(0); }
+
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--s3);
+  border-radius: 2px;
+  margin: 12px auto 20px;
+}
+
+.modal-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+.modal-sub   { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text2);
+}
+
+.price-row:last-of-type { border-bottom: none; }
+.price-row .val { color: var(--text); font-weight: 600; }
+
+/* Pay method toggle */
+.pay-toggle {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.pay-opt {
+  flex: 1;
+  padding: 12px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.pay-opt.active {
+  border-color: var(--acc);
+  background: rgba(123,97,255,0.08);
+}
+
+.pay-opt-icon { font-size: 20px; margin-bottom: 4px; }
+.pay-opt-name { font-size: 12px; font-weight: 700; color: var(--text2); }
+.pay-opt.active .pay-opt-name { color: var(--acc); }
+.pay-opt-amount { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'Space Mono', monospace; }
+.pay-opt.active .pay-opt-amount { color: var(--text2); }
+
+#stripe-card-wrap { display: none; }
+#stripe-card-wrap.show {
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.kta-pay-info { display: none; background: var(--bg); border: 1px solid var(--border2); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+.kta-pay-info.show { display: block; }
+.kta-big { font-size: 24px; font-weight: 800; color: var(--acc); margin: 4px 0; }
+.kta-bal { font-size: 12px; color: var(--text2); font-family: 'Space Mono', monospace; }
+.kta-rate { font-size: 11px; color: var(--text3); font-family: 'Space Mono', monospace; margin-top: 2px; }
+
+.btn-primary {
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--card-grad);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: opacity 0.2s;
+  margin-top: 4px;
+}
+
+.btn-primary:hover    { opacity: 0.88; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-ghost {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.15s;
+  margin-top: 8px;
+}
+
+.btn-ghost:hover { border-color: var(--text3); color: var(--text); }
+
+.error-line { font-size: 12px; color: var(--neg); margin-top: 8px; display: none; }
+.error-line.show { display: block; }
+
+/* ── ANCHOR PANEL ─────────────────────────────────────────────── */
+.anchor-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 16px;
+}
+
+.anchor-tab-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+
+.anchor-tab-btn.active {
+  background: var(--s2);
+  color: var(--text);
+  border-color: var(--border2);
+}
+
+.anchor-asset-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.anchor-asset-card:hover { background: var(--s2); }
+
+.anchor-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.anchor-action-form {
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 8px 0;
+}
+
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 11px; color: var(--text2); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px; }
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus { border-color: var(--acc); }
+.field input::placeholder { color: var(--text3); }
+
+.result-box {
+  background: rgba(0,195,142,0.08);
+  border: 1px solid rgba(0,195,142,0.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--pos);
+  font-family: 'Space Mono', monospace;
+  line-height: 1.8;
+  margin-top: 10px;
+  white-space: pre-wrap;
+  display: none;
+}
+
+.result-box.show { display: block; }
+
+/* ── PROFILE PAGE ─────────────────────────────────────────────── */
+.profile-avatar {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: var(--card-grad);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 800; color: #fff;
+  margin: 8px 20px 16px;
+}
+
+.profile-name { font-size: 22px; font-weight: 800; color: var(--text); padding: 0 20px; margin-bottom: 4px; }
+.profile-email { font-size: 13px; color: var(--text2); padding: 0 20px; margin-bottom: 24px; }
+
+.settings-group {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 0 20px 12px;
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-row:last-child { border-bottom: none; }
+.settings-row:hover { background: var(--s2); }
+.settings-row-left  { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; color: var(--text); }
+.settings-row-icon  { font-size: 18px; }
+.settings-row-right { font-size: 12px; color: var(--text3); }
+.settings-row.danger .settings-row-left { color: var(--neg); }
+
+/* ── TOAST ────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 999;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.toast.show { opacity: 1; }
+
+/* ── LIVE BADGE ───────────────────────────────────────────────── */
+.live-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(0,195,142,0.12);
+  color: var(--pos);
+  border: 1px solid rgba(0,195,142,0.25);
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.06em;
+}
+
+/* ── DIVIDER ──────────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ── EMPTY STATE ──────────────────────────────────────────────── */
+.empty { padding: 32px 20px; text-align: center; color: var(--text3); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── TOAST ── -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ── SCROLLABLE CONTENT ── -->
+  <div class="scroll-area" id="scroll-area">
+
+    <!-- ── HEADER (shown on all pages) ── -->
+    <div class="header">
+      <div class="header-logo">Keeta</div>
+      <div class="header-right">
+        <div class="notif-btn">🔔</div>
+        <div class="avatar" id="avatar-btn" onclick="goTo('profile')">?</div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- HOME PAGE                                   -->
+    <!-- ════════════════════════════════════════════ -->
+    <div class="page active" id="page-home">
+
+      <!-- Balance card -->
+      <div class="balance-section">
+        <div class="balance-card">
+          <div class="balance-label">Total balance</div>
+          <div class="balance-amount" id="balance-amount">$0.00</div>
+          <div class="balance-change" id="balance-change">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="quick-actions">
+        <button class="qa-btn" onclick="goTo('anchors');setAnchorMode('deposit')">
+          <div class="qa-icon">↓</div>
+          <span class="qa-label">Add</span>
+        </button>
+        <button class="qa-btn" onclick="showToast('Send coming soon')">
+          <div class="qa-icon">↑</div>
+          <span class="qa-label">Send</span>
+        </button>
+        <button class="qa-btn" onclick="showToast('Exchange coming soon')">
+          <div class="qa-icon">⇄</div>
+          <span class="qa-label">Exchange</span>
+        </button>
+        <button class="qa-btn" onclick="showReceive()">
+          <div class="qa-icon">⬡</div>
+          <span class="qa-label">Receive</span>
+        </button>
+      </div>
+
+      <!-- Holdings summary -->
+      <div class="section-header">
+        <span class="section-title">My assets</span>
+        <button class="section-action" onclick="goTo('portfolio')">See all</button>
+      </div>
+      <div class="asset-list" id="home-assets">
+        <div class="empty">Loading…</div>
+      </div>
+
+      <!-- Recent transactions -->
+      <div class="section-header">
+        <span class="section-title">Recent activity</span>
+      </div>
+      <div class="tx-list" id="tx-list">
+        <div class="tx-row">
+          <div class="tx-icon">☕</div>
+          <div class="tx-body"><div class="tx-name">Pret a Manger</div><div class="tx-date">Today, 08:42</div></div>
+          <div class="tx-amount neg">−£4.80</div>
+        </div>
+        <div class="tx-row">
+          <div class="tx-icon">💼</div>
+          <div class="tx-body"><div class="tx-name">Salary</div><div class="tx-date">Yesterday</div></div>
+          <div class="tx-amount pos">+£2,400.00</div>
+        </div>
+        <div class="tx-row">
+          <div class="tx-icon">🛒</div>
+          <div class="tx-body"><div class="tx-name">Amazon</div><div class="tx-date">Mon 31 Mar</div></div>
+          <div class="tx-amount neg">−£34.99</div>
+        </div>
+        <div class="tx-row" id="theme-tx" style="display:none">
+          <div class="tx-icon">🎨</div>
+          <div class="tx-body"><div class="tx-name" id="theme-tx-name">Theme</div><div class="tx-date">Just now</div></div>
+          <div class="tx-amount neg" id="theme-tx-amount"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- PORTFOLIO PAGE                              -->
+    <!-- ════════════════════════════════════════════ -->
+    <div class="page" id="page-portfolio">
+
+      <div style="padding: 8px 20px 20px">
+        <div style="font-size:26px;font-weight:800;color:var(--text);margin-bottom:2px">Portfolio</div>
+        <div style="font-size:13px;color:var(--text2)">Your crypto & fiat holdings</div>
+      </div>
+
+      <div class="card" style="text-align:center;padding:24px 20px">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:500">Net worth</div>
+        <div style="font-size:36px;font-weight:800;letter-spacing:-1px;color:var(--text)" id="portfolio-total">$0.00</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px;font-family:'Space Mono',monospace">1 KTA = $<span id="kta-rate-display">…</span></div>
+      </div>
+
+      <div class="section-header" style="padding-top:8px">
+        <span class="section-title">All assets</span>
+        <span class="live-badge">● LIVE</span>
+      </div>
+      <div class="asset-list" id="portfolio-assets">
+        <div class="empty">Loading…</div>
+      </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- ANCHORS PAGE                                -->
+    <!-- ════════════════════════════════════════════ -->
+    <div class="page" id="page-anchors">
+
+      <div style="padding: 8px 20px 20px">
+        <div style="font-size:26px;font-weight:800;color:var(--text);margin-bottom:2px">Anchors</div>
+        <div style="font-size:13px;color:var(--text2)">Move money in and out via the Base chain</div>
+      </div>
+
+      <div class="anchor-header-row">
+        <button class="anchor-tab-btn active" id="anch-dep-btn" onclick="setAnchorMode('deposit')">↓ Deposit</button>
+        <button class="anchor-tab-btn" id="anch-wit-btn" onclick="setAnchorMode('withdraw')">↑ Withdraw</button>
+      </div>
+
+      <!-- Anchor info strip -->
+      <div class="card" style="margin-bottom:16px;display:flex;gap:16px;align-items:center;padding:14px 16px">
+        <div style="font-size:28px">⚡</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">Base Anchor <span class="live-badge">● LIVE</span></div>
+          <div style="font-size:11px;color:var(--text2);font-family:'Space Mono',monospace">~2 min · ~$0.01 fee · KTA, USDC, EURC, CBBTC</div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <span class="section-title" id="anchor-section-title">Choose asset to deposit</span>
+      </div>
+
+      <div class="asset-list" id="anchor-asset-list">
+        <!-- populated by JS -->
+      </div>
+
+      <!-- Action form -->
+      <div id="anchor-form-wrap" style="padding: 0 20px; display:none">
+        <div class="anchor-action-form">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px" id="anchor-form-title">Deposit USDC</div>
+          <div class="field">
+            <label>Amount</label>
+            <input type="number" id="anchor-amount" placeholder="0.00" min="0" step="any">
+          </div>
+          <div class="field" id="anchor-dest-field" style="display:none">
+            <label>Destination address (Base chain)</label>
+            <input type="text" id="anchor-dest" placeholder="0x…">
+          </div>
+          <button class="btn-primary" id="anchor-submit-btn" onclick="submitAnchor()">Continue</button>
+          <div class="result-box" id="anchor-result"></div>
+          <button class="btn-ghost" onclick="closeAnchorForm()">Cancel</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- THEMES PAGE                                 -->
+    <!-- ════════════════════════════════════════════ -->
+    <div class="page" id="page-themes">
+
+      <div style="padding: 8px 20px 20px">
+        <div style="font-size:26px;font-weight:800;color:var(--text);margin-bottom:2px">Themes</div>
+        <div style="font-size:13px;color:var(--text2)">Personalise your wallet. Buy once, keep forever.</div>
+      </div>
+
+      <div class="theme-grid" id="theme-grid">
+        <div class="empty" style="grid-column:span 2">Loading themes…</div>
+      </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════════════ -->
+    <!-- PROFILE PAGE                                -->
+    <!-- ════════════════════════════════════════════ -->
+    <div class="page" id="page-profile">
+
+      <div style="padding: 8px 0 0">
+        <div class="profile-avatar" id="profile-avatar">?</div>
+        <div class="profile-name" id="profile-name">…</div>
+        <div class="profile-email" id="profile-email">…</div>
+      </div>
+
+      <!-- Keeta address -->
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Keeta address</div>
+        <div style="font-size:11px;color:var(--text);font-family:'Space Mono',monospace;word-break:break-all;line-height:1.6" id="profile-address">—</div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-row" onclick="goTo('themes')">
+          <span class="settings-row-left"><span class="settings-row-icon">🎨</span>Themes</span>
+          <span class="settings-row-right">→</span>
+        </div>
+        <div class="settings-row" onclick="goTo('anchors')">
+          <span class="settings-row-left"><span class="settings-row-icon">⚡</span>Anchors</span>
+          <span class="settings-row-right">→</span>
+        </div>
+        <div class="settings-row" id="artist-row" style="display:none" onclick="window.location.href='/artist.html'">
+          <span class="settings-row-left"><span class="settings-row-icon">🖌️</span>Artist Studio</span>
+          <span class="settings-row-right">→</span>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-row danger" onclick="doLogout()">
+          <span class="settings-row-left"><span class="settings-row-icon">🚪</span>Sign out</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- end scroll-area -->
+
+  <!-- ── BOTTOM NAV ── -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-home"      onclick="goTo('home')"><span class="nav-icon">⬡</span>Home</button>
+    <button class="nav-btn"        id="nav-portfolio" onclick="goTo('portfolio')"><span class="nav-icon">◈</span>Assets</button>
+    <button class="nav-btn"        id="nav-anchors"   onclick="goTo('anchors')"><span class="nav-icon">⇄</span>Anchors</button>
+    <button class="nav-btn"        id="nav-themes"    onclick="goTo('themes')"><span class="nav-icon">✦</span>Themes</button>
+    <button class="nav-btn"        id="nav-profile"   onclick="goTo('profile')"><span class="nav-icon">◯</span>Profile</button>
+  </nav>
+
+</div><!-- end app -->
+
+<!-- ── PURCHASE MODAL (bottom sheet) ── -->
+<div class="modal-overlay" id="modal-overlay" onclick="e => { if(e.target===this) closePurchase(); }">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">Solar Flare</div>
+    <div class="modal-sub"   id="modal-desc">Volcanic warm tones.</div>
+
+    <div class="price-row"><span>Theme</span><span class="val" id="modal-price"></span></div>
+    <div class="price-row"><span>Total</span><span class="val" id="modal-total"></span></div>
+
+    <div class="pay-toggle">
+      <div class="pay-opt active" id="pay-opt-kta" onclick="setPayMethod('kta')">
+        <div class="pay-opt-icon">⬡</div>
+        <div class="pay-opt-name">KTA</div>
+        <div class="pay-opt-amount" id="pm-kta-amt">…</div>
+      </div>
+      <div class="pay-opt" id="pay-opt-card" onclick="setPayMethod('card')">
+        <div class="pay-opt-icon">💳</div>
+        <div class="pay-opt-name">Card</div>
+        <div class="pay-opt-amount" id="pm-card-amt">Stripe</div>
+      </div>
+    </div>
+
+    <div class="kta-pay-info show" id="kta-pay-info">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:4px">You pay</div>
+      <div class="kta-big">⬡ <span id="kta-amount-big">…</span> KTA</div>
+      <div class="kta-bal">Balance: <span id="kta-balance">…</span> KTA available</div>
+      <div class="kta-rate">1 KTA = $<span id="kta-rate-modal">…</span></div>
+    </div>
+
+    <div id="stripe-card-wrap">
+      <div id="card-element"></div>
+    </div>
+
+    <button class="btn-primary" id="buy-btn" onclick="completePurchase()">Buy theme</button>
+    <button class="btn-ghost" onclick="closePurchase()">Cancel</button>
+    <div class="error-line" id="modal-error"></div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let THEMES      = {};
+let owned       = new Set();
+let currentTheme = 'genesis';
+let purchasing  = null;
+let payMethod   = 'kta';
+let ktaRate     = 0.26;
+let ktaForTheme = 0;
+let THEME_PRICE_USD = 4;
+let stripe      = null;
+let cardElement = null;
+let anchorMode  = 'deposit';
+let anchorSymbol = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function fmt(pence) { return pence == null ? null : '£' + (pence/100).toFixed(2); }
+function fmtKta(n)  { return typeof n === 'number' ? n.toFixed(4).replace(/\.?0+$/,'') : '0'; }
+function fmtUsd(n)  { return '$' + parseFloat(n||0).toFixed(2); }
+function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+
+const ASSET_COLORS = { KTA:'#7b61ff', USDC:'#2775ca', EURC:'#0050a0', CBBTC:'#f7931a', USD:'#00c38e', EUR:'#0064c8' };
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const nb = document.getElementById('nav-' + page);
+  if (nb) nb.classList.add('active');
+  document.getElementById('scroll-area').scrollTop = 0;
+
+  if (page === 'portfolio') loadPortfolio();
+  if (page === 'anchors')   loadAnchors();
+  if (page === 'themes')    renderThemes();
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function boot() {
+  const cfg = await fetch('/api/config').then(r => r.json()).catch(() => null);
+  if (!cfg?.user) { window.location.href = '/login.html'; return; }
+
+  THEME_PRICE_USD = cfg.themePriceUsd || 4;
+
+  // Update UI with user info
+  const name = cfg.user.name;
+  document.getElementById('avatar-btn').textContent     = initials(name);
+  document.getElementById('profile-avatar').textContent = initials(name);
+  document.getElementById('profile-name').textContent   = name;
+
+  if (cfg.user.isArtist) document.getElementById('artist-row').style.display = '';
+
+  // Stripe
+  if (cfg.stripePublishableKey) {
+    stripe = Stripe(cfg.stripePublishableKey);
+    const els = stripe.elements();
+    cardElement = els.create('card', {
+      style: { base: { color:'#fff', fontFamily:"'Inter',sans-serif", fontSize:'15px', '::placeholder':{ color:'#3a3a48' } }, invalid:{ color:'#ff4d6a' } },
+    });
+    cardElement.mount('#card-element');
+  }
+
+  // Load user's Keeta address
+  const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => ({}));
+  if (me.user?.email) document.getElementById('profile-email').textContent = me.user.email;
+  if (me.user?.keeta_address) document.getElementById('profile-address').textContent = me.user.keeta_address;
+
+  // KTA rate
+  fetch('/api/kta/rate').then(r => r.json()).then(d => {
+    ktaRate     = d.usdPerKta;
+    ktaForTheme = d.themePriceKta;
+    document.getElementById('pm-kta-amt').textContent     = fmtKta(d.themePriceKta) + ' KTA';
+    if (document.getElementById('kta-rate-display'))
+      document.getElementById('kta-rate-display').textContent = d.usdPerKta.toFixed(4);
+  }).catch(() => {});
+
+  // Load home data
+  loadHomeAssets();
+  loadThemes();
+}
+
+// ── Home: asset summary ───────────────────────────────────────────────────────
+async function loadHomeAssets() {
+  try {
+    const data = await fetch('/api/wallet/balances').then(r => r.json());
+    const total = parseFloat(data.totalUsd);
+    document.getElementById('balance-amount').textContent = fmtUsd(total);
+    document.getElementById('balance-change').textContent = 'Crypto balance · live';
+    document.getElementById('balance-change').className = 'balance-change';
+
+    // Show top 3 assets on home
+    const el = document.getElementById('home-assets');
+    el.innerHTML = '';
+    data.balances.slice(0,4).forEach(b => el.appendChild(makeAssetRow(b)));
+  } catch(e) {
+    document.getElementById('balance-change').textContent = 'Could not load';
+  }
+}
+
+function makeAssetRow(b) {
+  const row = document.createElement('div');
+  row.className = 'asset-row';
+  const color = ASSET_COLORS[b.symbol] || '#555';
+  const sym   = b.symbol.slice(0,4);
+  row.innerHTML = `
+    <div class="asset-icon" style="background:${color}">${sym}</div>
+    <div class="asset-body">
+      <div class="asset-name">${b.name}</div>
+      <div class="asset-meta">${b.symbol} · ${fmtKta(b.balance)}</div>
+    </div>
+    <div class="asset-right">
+      <div class="asset-value">${fmtUsd(b.usdValue)}</div>
+    </div>`;
+  return row;
+}
+
+// ── Portfolio ─────────────────────────────────────────────────────────────────
+async function loadPortfolio() {
+  const el = document.getElementById('portfolio-assets');
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const data = await fetch('/api/wallet/balances').then(r => r.json());
+    document.getElementById('portfolio-total').textContent       = fmtUsd(data.totalUsd);
+    document.getElementById('kta-rate-display').textContent      = data.ktaUsdRate.toFixed(4);
+    el.innerHTML = '';
+    data.balances.forEach(b => el.appendChild(makeAssetRow(b)));
+  } catch(e) {
+    el.innerHTML = '<div class="empty" style="color:var(--neg)">Could not load</div>';
+  }
+}
+
+// ── Anchors ───────────────────────────────────────────────────────────────────
+const ANCHOR_ASSETS = [
+  { symbol:'KTA',   name:'Keeta',        color:'#7b61ff' },
+  { symbol:'USDC',  name:'USD Coin',     color:'#2775ca' },
+  { symbol:'EURC',  name:'Euro Coin',    color:'#0050a0' },
+  { symbol:'CBBTC', name:'Coinbase BTC', color:'#f7931a' },
+];
+
+function setAnchorMode(mode) {
+  anchorMode = mode;
+  anchorSymbol = null;
+  document.getElementById('anch-dep-btn').classList.toggle('active', mode === 'deposit');
+  document.getElementById('anch-wit-btn').classList.toggle('active', mode === 'withdraw');
+  document.getElementById('anchor-section-title').textContent =
+    mode === 'deposit' ? 'Choose asset to deposit' : 'Choose asset to withdraw';
+  closeAnchorForm();
+  loadAnchors();
+}
+
+function loadAnchors() {
+  const list = document.getElementById('anchor-asset-list');
+  list.innerHTML = '';
+  ANCHOR_ASSETS.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'anchor-asset-card';
+    row.onclick = () => openAnchorForm(a.symbol);
+    row.innerHTML = `
+      <div class="anchor-dot" style="background:${a.color};width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;font-family:'Space Mono',monospace">${a.symbol.slice(0,3)}</div>
+      <div class="asset-body">
+        <div class="asset-name">${a.name}</div>
+        <div class="asset-meta">${a.symbol} · Base chain</div>
+      </div>
+      <div style="font-size:20px;color:var(--text3)">${anchorMode === 'deposit' ? '→' : '←'}</div>`;
+    list.appendChild(row);
+  });
+}
+
+function openAnchorForm(symbol) {
+  anchorSymbol = symbol;
+  const wrap = document.getElementById('anchor-form-wrap');
+  const direction = anchorMode === 'deposit' ? 'Deposit' : 'Withdraw';
+  document.getElementById('anchor-form-title').textContent = `${direction} ${symbol}`;
+  document.getElementById('anchor-dest-field').style.display = anchorMode === 'withdraw' ? '' : 'none';
+  document.getElementById('anchor-amount').value = '';
+  document.getElementById('anchor-dest').value   = '';
+  document.getElementById('anchor-result').classList.remove('show');
+  document.getElementById('anchor-submit-btn').textContent = anchorMode === 'deposit' ? 'Get deposit address' : 'Initiate withdrawal';
+  wrap.style.display = '';
+  wrap.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function closeAnchorForm() {
+  document.getElementById('anchor-form-wrap').style.display = 'none';
+  anchorSymbol = null;
+}
+
+async function submitAnchor() {
+  const amount = parseFloat(document.getElementById('anchor-amount').value);
+  const dest   = document.getElementById('anchor-dest').value.trim();
+  if (!amount || amount <= 0) { showToast('Enter a valid amount'); return; }
+  if (anchorMode === 'withdraw' && !dest) { showToast('Enter a destination address'); return; }
+
+  const btn = document.getElementById('anchor-submit-btn');
+  const res_el = document.getElementById('anchor-result');
+  btn.textContent = 'Processing…';
+
+  try {
+    const endpoint = anchorMode === 'deposit' ? '/api/anchors/deposit' : '/api/anchors/withdraw';
+    const body = anchorMode === 'deposit'
+      ? { symbol: anchorSymbol, amount }
+      : { symbol: anchorSymbol, amount, destinationAddress: dest };
+
+    const res  = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+
+    if (anchorMode === 'deposit') {
+      res_el.textContent = `Deposit address:\n${data.depositAddress}\n\nMemo: ${data.memo}\nEst. time: ${data.estimatedTime}`;
+    } else {
+      res_el.textContent = `Withdrawal queued ✓\nTx: ${data.txId}\nEst. time: ${data.estimatedTime}`;
+    }
+    res_el.classList.add('show');
+    btn.textContent = anchorMode === 'deposit' ? 'Get deposit address' : 'Initiate withdrawal';
+  } catch(e) {
+    showToast('Error: ' + e.message);
+    btn.textContent = anchorMode === 'deposit' ? 'Get deposit address' : 'Initiate withdrawal';
+  }
+}
+
+// ── Receive ───────────────────────────────────────────────────────────────────
+function showReceive() {
+  goTo('profile');
+  showToast('Your Keeta address is shown on your profile');
+}
+
+// ── Themes ────────────────────────────────────────────────────────────────────
+const THEME_PREVIEW = {
+  genesis:  { bg:'#f0efea', barColor:'#1a1a18', barGlow:'',                 textColor:'#1a1a18', font:'' },
+  obsidian: { bg:'#080508', barColor:'#cc1535', barGlow:'0 0 6px #cc1535',  textColor:'#eed8dc', font:"font-family:'Cinzel',serif" },
+  neon:     { bg:'#020a12', barColor:'#00e8c8', barGlow:'0 0 6px #00e8c8',  textColor:'#00e8c8', font:"font-family:'Orbitron',sans-serif;font-size:11px" },
+  solar:    { bg:'#180d00', barColor:'#ff8c00', barGlow:'0 0 6px #ff8c00',  textColor:'#fff0d0', font:'' },
+  abyss:    { bg:'#010610', barColor:'#0080ff', barGlow:'0 0 6px #0080ff',  textColor:'#b0d8ff', font:"font-family:'Libre Baskerville',serif;font-style:italic" },
+  sakura:   { bg:'#180810', barColor:'#ff5090', barGlow:'0 0 6px #ff5090',  textColor:'#ffd8ec', font:'' },
+};
+
+const THEME_CSS_VARS = {
+  genesis:  { '--acc':'#7b61ff', '--acc2':'#00c2ff', '--card-grad':'linear-gradient(135deg,#7b61ff,#00c2ff)' },
+  obsidian: { '--acc':'#cc1535', '--acc2':'#4a0010', '--card-grad':'linear-gradient(135deg,#cc1535,#4a0010)' },
+  neon:     { '--acc':'#00e8c8', '--acc2':'#ff0066', '--card-grad':'linear-gradient(135deg,#00e8c8,#ff0066)' },
+  solar:    { '--acc':'#ff8c00', '--acc2':'#ff4400', '--card-grad':'linear-gradient(135deg,#ff8c00,#ff4400)' },
+  abyss:    { '--acc':'#0080ff', '--acc2':'#00c8ff', '--card-grad':'linear-gradient(135deg,#0080ff,#00c8ff)' },
+  sakura:   { '--acc':'#ff5090', '--acc2':'#ff90c0', '--card-grad':'linear-gradient(135deg,#ff5090,#ff90c0)' },
+};
+
+async function loadThemes() {
+  try {
+    const data = await fetch('/api/themes').then(r => r.json());
+    THEMES = {}; owned = new Set();
+    for (const t of data) { THEMES[t.key] = t; if (t.owned) owned.add(t.key); }
+    renderThemes();
+    // Apply active (first owned) theme to app chrome
+    const active = data.find(t => t.owned);
+    if (active) applyThemeCss(active.key);
+  } catch(e) {}
+}
+
+function renderThemes() {
+  const grid = document.getElementById('theme-grid');
+  grid.innerHTML = '';
+  Object.values(THEMES).forEach(t => {
+    const p    = THEME_PREVIEW[t.key] || THEME_PREVIEW.genesis;
+    const card = document.createElement('div');
+    card.className = 'theme-card' + (t.key === currentTheme ? ' active' : '');
+    card.id = 'tc-' + t.key;
+
+    const ownedEl = owned.has(t.key)
+      ? `<span class="theme-foot-owned">✓ Applied</span>`
+      : `<button class="buy-pill" onclick="event.stopPropagation();openPurchase('${t.key}')">${fmt(t.price_pence)}</button>`;
+
+    card.innerHTML = `
+      <div class="theme-preview" style="background:${p.bg}">
+        <div class="theme-preview-bar" style="background:${p.barColor};${p.barGlow?'box-shadow:'+p.barGlow:''}"></div>
+        <div class="theme-preview-amt" style="color:${p.textColor};${p.font}">$4,820</div>
+      </div>
+      <div class="theme-foot">
+        <div>
+          <div class="theme-foot-name">${t.name}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:1px">${fmtKta(t.owners_count/1000)}k owners</div>
+        </div>
+        ${owned.has(t.key) && t.key !== currentTheme
+          ? `<button class="buy-pill" style="background:rgba(123,97,255,0.1);border-color:rgba(123,97,255,0.3);color:var(--acc)" onclick="event.stopPropagation();applyTheme('${t.key}')">Apply</button>`
+          : ownedEl}
+      </div>`;
+
+    card.onclick = () => owned.has(t.key) ? applyTheme(t.key) : openPurchase(t.key);
+    grid.appendChild(card);
+  });
+}
+
+function applyTheme(key) {
+  currentTheme = key;
+  applyThemeCss(key);
+  renderThemes();
+  showToast(THEMES[key]?.name + ' applied ✓');
+}
+
+function applyThemeCss(key) {
+  const vars = THEME_CSS_VARS[key] || THEME_CSS_VARS.genesis;
+  const root = document.documentElement;
+  Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
+}
+
+// ── Purchase modal ────────────────────────────────────────────────────────────
+function openPurchase(key) {
+  if (owned.has(key)) { applyTheme(key); return; }
+  purchasing = key;
+  const t = THEMES[key];
+  document.getElementById('modal-title').textContent = t.name;
+  document.getElementById('modal-desc').textContent  = t.description;
+  document.getElementById('modal-price').textContent = fmt(t.price_pence);
+  document.getElementById('modal-total').textContent = fmt(t.price_pence);
+  document.getElementById('modal-error').classList.remove('show');
+
+  // Refresh KTA rate
+  fetch('/api/kta/rate').then(r => r.json()).then(d => {
+    ktaRate     = d.usdPerKta;
+    ktaForTheme = d.themePriceKta;
+    document.getElementById('kta-amount-big').textContent  = fmtKta(d.themePriceKta);
+    document.getElementById('kta-rate-modal').textContent  = d.usdPerKta.toFixed(4);
+    document.getElementById('pm-kta-amt').textContent      = fmtKta(d.themePriceKta) + ' KTA';
+  }).catch(() => {});
+
+  // Load KTA balance
+  fetch('/api/wallet/balances').then(r => r.json()).then(d => {
+    const kta = d.balances.find(b => b.symbol === 'KTA');
+    document.getElementById('kta-balance').textContent = fmtKta(kta?.balance || 0);
+  }).catch(() => {});
+
+  setPayMethod('kta');
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closePurchase() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  purchasing = null;
+}
+
+function setPayMethod(method) {
+  payMethod = method;
+  document.getElementById('pay-opt-kta').classList.toggle('active',  method === 'kta');
+  document.getElementById('pay-opt-card').classList.toggle('active', method === 'card');
+  document.getElementById('kta-pay-info').classList.toggle('show',   method === 'kta');
+  document.getElementById('stripe-card-wrap').classList.toggle('show', method === 'card' && !!stripe);
+  document.getElementById('buy-btn').textContent = method === 'kta' ? 'Pay with KTA' : 'Pay by card';
+}
+
+// ── Complete purchase ─────────────────────────────────────────────────────────
+async function completePurchase() {
+  if (!purchasing) return;
+  const key   = purchasing;
+  const btn   = document.getElementById('buy-btn');
+  const errEl = document.getElementById('modal-error');
+  btn.disabled = true; btn.textContent = 'Processing…';
+  errEl.classList.remove('show');
+
+  try {
+    if (payMethod === 'kta') {
+      const res  = await fetch('/api/purchase/kta', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ themeKey: key }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      onSuccess(key, fmtKta(data.ktaAmount) + ' KTA');
+
+    } else {
+      const ir   = await fetch('/api/purchase/intent', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ themeKey: key }),
+      });
+      const id   = await ir.json();
+      if (!ir.ok) throw new Error(id.error);
+
+      let piId = null;
+      if (!id.stub && stripe) {
+        const { paymentIntent, error } = await stripe.confirmCardPayment(id.clientSecret, {
+          payment_method: { card: cardElement },
+        });
+        if (error) throw new Error(error.message);
+        piId = paymentIntent.id;
+      }
+
+      const cr   = await fetch('/api/purchase/confirm', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ themeKey: key, paymentIntentId: piId, stub: id.stub }),
+      });
+      const cd   = await cr.json();
+      if (!cr.ok) throw new Error(cd.error);
+      onSuccess(key, fmt(THEMES[key].price_pence));
+    }
+  } catch(e) {
+    errEl.textContent = e.message; errEl.classList.add('show');
+    btn.disabled = false; btn.textContent = payMethod === 'kta' ? 'Pay with KTA' : 'Pay by card';
+  }
+}
+
+function onSuccess(key, displayAmt) {
+  owned.add(key);
+  if (THEMES[key]) THEMES[key].owners_count += 1;
+
+  document.getElementById('theme-tx-name').textContent   = THEMES[key]?.name + ' theme';
+  document.getElementById('theme-tx-amount').textContent = '−' + displayAmt;
+  document.getElementById('theme-tx').style.display      = '';
+
+  closePurchase();
+  applyTheme(key);
+  showToast(THEMES[key]?.name + ' applied ✓');
+  renderThemes();
+  loadHomeAssets();
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+async function doLogout() {
+  await fetch('/api/auth/logout', { method:'POST' });
+  window.location.href = '/login.html';
+}
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closePurchase();
+});
+
+boot();
+</script>
+</body>
+</html>
