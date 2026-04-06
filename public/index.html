@@ -1062,12 +1062,12 @@ async function boot() {
   }
 
   // Load user's Keeta address
-  const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => ({}));
+  const me = await fetch('/api/auth/me', {credentials:'include'}).then(r => r.json()).catch(() => ({}));
   if (me.user?.email) document.getElementById('profile-email').textContent = me.user.email;
   if (me.user?.keeta_address) document.getElementById('profile-address').textContent = me.user.keeta_address;
 
   // KTA rate
-  fetch('/api/kta/rate').then(r => r.json()).then(d => {
+  fetch('/api/kta/rate', {credentials:'include'}).then(r => r.json()).then(d => {
     ktaRate     = d.usdPerKta;
     ktaForTheme = d.themePriceKta;
     document.getElementById('pm-kta-amt').textContent     = fmtKta(d.themePriceKta) + ' KTA';
@@ -1083,7 +1083,7 @@ async function boot() {
 // ── Home: asset summary ───────────────────────────────────────────────────────
 async function loadHomeAssets() {
   try {
-    const data = await fetch('/api/wallet/balances').then(r => r.json());
+    const data = await fetch('/api/wallet/balances', {credentials:'include'}).then(r => r.json());
     const total = parseFloat(data.totalUsd);
     document.getElementById('balance-amount').textContent = fmtUsd(total);
     document.getElementById('balance-change').textContent = 'Crypto balance · live';
@@ -1120,7 +1120,7 @@ async function loadPortfolio() {
   const el = document.getElementById('portfolio-assets');
   el.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const data = await fetch('/api/wallet/balances').then(r => r.json());
+    const data = await fetch('/api/wallet/balances', {credentials:'include'}).then(r => r.json());
     document.getElementById('portfolio-total').textContent       = fmtUsd(data.totalUsd);
     document.getElementById('kta-rate-display').textContent      = data.ktaUsdRate.toFixed(4);
     el.innerHTML = '';
@@ -1202,7 +1202,7 @@ async function submitAnchor() {
       ? { symbol: anchorSymbol, amount }
       : { symbol: anchorSymbol, amount, destinationAddress: dest };
 
-    const res  = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const res  = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body), credentials:'include' });
     const data = await res.json();
 
     if (anchorMode === 'deposit') {
@@ -1245,7 +1245,7 @@ const THEME_CSS_VARS = {
 
 async function loadThemes() {
   try {
-    const data = await fetch('/api/themes').then(r => r.json());
+    const data = await fetch('/api/themes', {credentials:'include'}).then(r => r.json());
     THEMES = {}; owned = new Set();
     for (const t of data) { THEMES[t.key] = t; if (t.owned) owned.add(t.key); }
     renderThemes();
@@ -1313,7 +1313,7 @@ function openPurchase(key) {
   document.getElementById('modal-error').classList.remove('show');
 
   // Refresh KTA rate
-  fetch('/api/kta/rate').then(r => r.json()).then(d => {
+  fetch('/api/kta/rate', {credentials:'include'}).then(r => r.json()).then(d => {
     ktaRate     = d.usdPerKta;
     ktaForTheme = d.themePriceKta;
     document.getElementById('kta-amount-big').textContent  = fmtKta(d.themePriceKta);
@@ -1322,7 +1322,7 @@ function openPurchase(key) {
   }).catch(() => {});
 
   // Load KTA balance
-  fetch('/api/wallet/balances').then(r => r.json()).then(d => {
+  fetch('/api/wallet/balances', {credentials:'include'}).then(r => r.json()).then(d => {
     const kta = d.balances.find(b => b.symbol === 'KTA');
     document.getElementById('kta-balance').textContent = fmtKta(kta?.balance || 0);
   }).catch(() => {});
@@ -1358,7 +1358,7 @@ async function completePurchase() {
     if (payMethod === 'kta') {
       const res  = await fetch('/api/purchase/kta', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ themeKey: key }),
+        body: JSON.stringify({ themeKey: key }), credentials:'include',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -1367,7 +1367,7 @@ async function completePurchase() {
     } else {
       const ir   = await fetch('/api/purchase/intent', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ themeKey: key }),
+        body: JSON.stringify({ themeKey: key }), credentials:'include',
       });
       const id   = await ir.json();
       if (!ir.ok) throw new Error(id.error);
@@ -1383,7 +1383,7 @@ async function completePurchase() {
 
       const cr   = await fetch('/api/purchase/confirm', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ themeKey: key, paymentIntentId: piId, stub: id.stub }),
+        body: JSON.stringify({ themeKey: key, paymentIntentId: piId, stub: id.stub }), credentials:'include',
       });
       const cd   = await cr.json();
       if (!cr.ok) throw new Error(cd.error);
@@ -1412,7 +1412,7 @@ function onSuccess(key, displayAmt) {
 
 // ── Logout ────────────────────────────────────────────────────────────────────
 async function doLogout() {
-  await fetch('/api/auth/logout', { method:'POST' });
+  await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
   window.location.href = '/login.html';
 }
 
