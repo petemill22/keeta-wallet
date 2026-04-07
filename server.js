@@ -1,10 +1,25 @@
 require('dotenv').config();
-const express = require('express');
-const session = require('express-session');
-const bcrypt  = require('bcryptjs');
-const path    = require('path');
-const db      = require('./db');
-const keeta   = require('./keeta');
+const express  = require('express');
+const session  = require('express-session');
+const bcrypt   = require('bcryptjs');
+const path     = require('path');
+const db       = require('./db');
+const keeta    = require('./keeta');
+const { encryptSeed, decryptSeed, isEncrypted } = require('./crypto-utils');
+
+// ── Login rate limiter (in-memory: 5 attempts per IP per 15 min) ──────────────
+const loginAttempts = new Map();
+function checkRateLimit(ip) {
+  const now    = Date.now();
+  const window = 15 * 60 * 1000;
+  const max    = 5;
+  const entry  = loginAttempts.get(ip) || { count: 0, since: now };
+  if (now - entry.since > window) { entry.count = 0; entry.since = now; }
+  entry.count++;
+  loginAttempts.set(ip, entry);
+  return entry.count > max;
+}
+function clearRateLimit(ip) { loginAttempts.delete(ip); }
 
 const app = express();
 app.set('trust proxy', 1); // Render / Cloudflare sit in front
@@ -57,13 +72,14 @@ app.post('/api/auth/register', async (req, res) => {
   const passwordHash    = await bcrypt.hash(password, 10);
   const walletAddress   = 'wallet-' + Date.now();
   const keetaSeed       = await keeta.generateSeed();
-  const _rawAddr0    = await keeta.addressFromSeed(keetaSeed);
-  const keetaAddress = _rawAddr0 ? String(_rawAddr0) : '';
+  const _rawAddr0       = await keeta.addressFromSeed(keetaSeed);
+  const keetaAddress    = _rawAddr0 ? String(_rawAddr0) : '';
+  const encryptedSeed   = encryptSeed(keetaSeed);
 
   const result = db.prepare(`
     INSERT INTO users (wallet_address, email, password_hash, name, keeta_seed, keeta_address)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(walletAddress, email, passwordHash, name, keetaSeed, keetaAddress);
+  `).run(walletAddress, email, passwordHash, name, encryptedSeed, keetaAddress);
 
   const userId = result.lastInsertRowid;
   const ip     = db.prepare(`INSERT OR IGNORE INTO purchases (user_id, theme_key, amount_pence) VALUES (?, ?, 0)`);
@@ -80,17 +96,28 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
+  // Rate limit: 5 attempts per IP per 15 minutes
+  const ip = req.ip;
+  if (checkRateLimit(ip))
+    return res.status(429).json({ error: 'Too many login attempts. Try again in 15 minutes.' });
+
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
   if (!user || !(await bcrypt.compare(password, user.password_hash)))
     return res.status(401).json({ error: 'Invalid email or password' });
 
-  // Backfill Keeta seed for users created before this feature
+  clearRateLimit(ip); // reset on successful login
+
+  // Backfill seed for old users, or migrate plaintext seed to encrypted
   if (!user.keeta_seed) {
     const keetaSeed    = await keeta.generateSeed();
     const rawAddr      = await keeta.addressFromSeed(keetaSeed);
     const keetaAddress = rawAddr ? String(rawAddr) : '';
     db.prepare('UPDATE users SET keeta_seed = ?, keeta_address = ? WHERE id = ?')
-      .run(keetaSeed, keetaAddress, user.id);
+      .run(encryptSeed(keetaSeed), keetaAddress, user.id);
+  } else if (!isEncrypted(user.keeta_seed)) {
+    // Migrate plaintext seed to encrypted
+    db.prepare('UPDATE users SET keeta_seed = ? WHERE id = ?')
+      .run(encryptSeed(user.keeta_seed), user.id);
   }
 
   req.session.userId   = user.id;
@@ -162,7 +189,7 @@ app.get('/api/kta/rate', async (req, res) => {
 // ── Wallet balances ───────────────────────────────────────────────────────────
 app.get('/api/wallet/balances', requireAuth, async (req, res) => {
   const user     = db.prepare('SELECT keeta_seed FROM users WHERE id = ?').get(req.session.userId);
-  const balances = await keeta.getBalances(user?.keeta_seed);
+  const balances = await keeta.getBalances(decryptSeed(user?.keeta_seed));
   const ktaRate  = await keeta.getKtaUsdRate();
   const totalUsd = balances.reduce((sum, b) => sum + parseFloat(b.usdValue), 0);
   res.json({ balances, totalUsd: totalUsd.toFixed(2), ktaUsdRate: ktaRate });
@@ -177,7 +204,7 @@ app.post('/api/anchors/deposit', requireAuth, async (req, res) => {
   const { symbol, amount } = req.body;
   if (!symbol || !amount) return res.status(400).json({ error: 'symbol and amount required' });
   const user   = db.prepare('SELECT keeta_seed FROM users WHERE id = ?').get(req.session.userId);
-  const result = await keeta.initiateDeposit(user?.keeta_seed, symbol, amount);
+  const result = await keeta.initiateDeposit(decryptSeed(user?.keeta_seed), symbol, amount);
   res.json(result);
 });
 
@@ -186,7 +213,7 @@ app.post('/api/anchors/withdraw', requireAuth, async (req, res) => {
   if (!symbol || !amount || !destinationAddress)
     return res.status(400).json({ error: 'symbol, amount, and destinationAddress required' });
   const user   = db.prepare('SELECT keeta_seed FROM users WHERE id = ?').get(req.session.userId);
-  const result = await keeta.initiateWithdraw(user?.keeta_seed, symbol, amount, destinationAddress);
+  const result = await keeta.initiateWithdraw(decryptSeed(user?.keeta_seed), symbol, amount, destinationAddress);
   res.json(result);
 });
 
@@ -267,7 +294,7 @@ app.post('/api/purchase/kta', requireAuth, async (req, res) => {
 
   let txResult;
   try {
-    txResult = await keeta.payForThemeKta(user?.keeta_seed, ktaAmount);
+    txResult = await keeta.payForThemeKta(decryptSeed(user?.keeta_seed), ktaAmount);
   } catch (err) {
     return res.status(502).json({ error: err.message });
   }
@@ -345,7 +372,7 @@ app.post('/api/artist/publish', requireAuth, async (req, res) => {
 
   let txResult;
   try {
-    txResult = await keeta.payForThemeKta(user.keeta_seed, feeKta);
+    txResult = await keeta.payForThemeKta(decryptSeed(user.keeta_seed), feeKta);
   } catch (err) {
     return res.status(402).json({ error: 'Publish fee payment failed: ' + err.message });
   }
